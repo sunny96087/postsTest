@@ -79,6 +79,17 @@ const requestListener = async(req, res)=>{
                 res.end();
             }
         })
+    }else if (req.url == "/posts" && req.method == "DELETE") {
+        const data = await Post.deleteMany({}); // {} 刪除全部
+        res.writeHead(200, headers);
+        res.write(
+          JSON.stringify({
+            "status": "success",
+            "data": [],
+            "message": "刪除全部資料成功"
+          })
+        );
+        res.end();
     }else if(req.url.startsWith("/posts/") && req.method=="DELETE"){
         const id = req.url.split('/').pop();
         await Post.findByIdAndDelete(id);
@@ -86,8 +97,56 @@ const requestListener = async(req, res)=>{
         res.write(JSON.stringify({
             "status": "success",
             "data": null,
+            "message": "刪除單筆資料成功"
         }));
         res.end();
+    }else if (req.url.startsWith("/posts/") && req.method == "PATCH") {
+        req.on("end", async () => {
+          try {
+            const id = req.url.split("/")[2];
+            const data = JSON.parse(body);
+    
+            const updatedPost = await Post.findByIdAndUpdate(
+              id,
+              {
+                name: data.name,
+                content: data.content
+              },
+              { new: true }
+            ); // 返回更新後的文檔
+    
+            if (updatedPost) {
+              res.writeHead(200, headers);
+              res.write(
+                JSON.stringify({
+                  "status": "success",
+                  "data": updatedPost,
+                  "message": "更新單筆資料成功",
+                })
+              );
+            } else {
+              res.writeHead(404, headers);
+              res.write(
+                JSON.stringify({
+                  status: "error",
+                  message: "沒有找到該 id",
+                })
+              );
+            }
+            res.end();
+          } catch {
+            res.writeHead(400, headers);
+            res.write(
+              JSON.stringify({
+                status: "error",
+                message: "請求處理失敗",
+                error: err.message,
+              })
+            );
+            console.error(err);
+            res.end();
+          }
+        });
     }else if(req.method == "OPTIONS"){
         res.writeHead(200,headers);
         res.end();
@@ -101,4 +160,4 @@ const requestListener = async(req, res)=>{
     }
 }
 const server = http.createServer(requestListener);
-server.listen(3000);
+server.listen(process.env.PORT || 3000);
