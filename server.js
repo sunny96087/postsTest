@@ -1,7 +1,10 @@
 const http = require('http');
 const mongoose = require('mongoose');
-
+const headers = require('./headers');
 const dotenv = require("dotenv");
+const handleError = require('./handleError');
+const handleSuccess = require('./handleSuccess');
+
 
 // 導入上面的 .env 檔
 dotenv.config({ path: "./config.env" });
@@ -25,12 +28,6 @@ const Post = require('./models/post')
 
 // schema 結束
 const requestListener = async(req, res)=>{
-    const headers = {
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Content-Length, X-Requested-With',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'PATCH, POST, GET,OPTIONS,DELETE',
-        'Content-Type': 'application/json'
-    }
     let body = "";
     req.on('data', chunk=>{
         body+=chunk;
@@ -38,68 +35,56 @@ const requestListener = async(req, res)=>{
 
     if(req.url=="/posts" && req.method == "GET"){
         const post = await Post.find();
-        res.writeHead(200,headers);
-        res.write(JSON.stringify({
-            "status": "success",
-            post
-        }));
-        res.end();
+        handleSuccess(res, post);
+        // res.end();
     }else if(req.url=="/posts" && req.method == "POST"){
         req.on('end',async()=>{
             try{
                 const data = JSON.parse(body);
-                if(data.content !== undefined){
+                if(data.content){
                     const newPost = await Post.create(
                         {
                             name: data.name,
                             content: data.content,
                         }
                     );
-                    res.writeHead(200,headers);
-                    res.write(JSON.stringify({
-                        "status": "success",
-                        "data": newPost,
-                    }));
-                    res.end();
-
+                    // res.writeHead(200,headers);
+                    // res.write(JSON.stringify({
+                    //     "status": "success",
+                    //     "data": newPost,
+                    // }));
+                    // res.end();
+                    handleSuccess(res, newPost, '新增單筆資料成功');
                 }else{
-                    res.writeHead(400,headers);
-                    res.write(JSON.stringify({
-                        "status": "false",
-                        "message": "欄位未填寫正確，或無此 todo ID",
-                    }));
-                    res.end();
+                  handleError(res);
                 }
-            }catch(error){
-                res.writeHead(400,headers);
-                res.write(JSON.stringify({
-                    "status": "false",
-                    "message": error,
-                }));
-                res.end();
+            }catch(err){
+              handleError(res, err);
             }
         })
     }else if (req.url == "/posts" && req.method == "DELETE") {
         const data = await Post.deleteMany({}); // {} 刪除全部
-        res.writeHead(200, headers);
-        res.write(
-          JSON.stringify({
-            "status": "success",
-            "data": [],
-            "message": "刪除全部資料成功"
-          })
-        );
-        res.end();
+        handleSuccess(res, [], '刪除全部資料成功');
+        // res.writeHead(200, headers);
+        // res.write(
+        //   JSON.stringify({
+        //     "status": "success",
+        //     "data": [],
+        //     "message": "刪除全部資料成功"
+        //   })
+        // );
+        // res.end();
     }else if(req.url.startsWith("/posts/") && req.method=="DELETE"){
         const id = req.url.split('/').pop();
         await Post.findByIdAndDelete(id);
-        res.writeHead(200,headers);
-        res.write(JSON.stringify({
-            "status": "success",
-            "data": null,
-            "message": "刪除單筆資料成功"
-        }));
-        res.end();
+        handleSuccess(res, null, '刪除單筆資料成功');
+        // res.writeHead(200,headers);
+        // res.write(JSON.stringify({
+        //     "status": "success",
+        //     "data": null,
+        //     "message": "刪除單筆資料成功"
+        // }));
+        // res.end();
     }else if (req.url.startsWith("/posts/") && req.method == "PATCH") {
         req.on("end", async () => {
           try {
@@ -116,35 +101,38 @@ const requestListener = async(req, res)=>{
             ); // 返回更新後的文檔
     
             if (updatedPost) {
-              res.writeHead(200, headers);
-              res.write(
-                JSON.stringify({
-                  "status": "success",
-                  "data": updatedPost,
-                  "message": "更新單筆資料成功",
-                })
-              );
+              handleSuccess(res, updatedPost, '更新單筆資料成功');
+              // res.writeHead(200, headers);
+              // res.write(
+              //   JSON.stringify({
+              //     "status": "success",
+              //     "data": updatedPost,
+              //     "message": "更新單筆資料成功",
+              //   })
+              // );
             } else {
-              res.writeHead(404, headers);
-              res.write(
-                JSON.stringify({
-                  status: "error",
-                  message: "沒有找到該 id",
-                })
-              );
+              handleError(res, err);
+            //   res.writeHead(404, headers);
+            //   res.write(
+            //     JSON.stringify({
+            //       status: "error",
+            //       message: "沒有找到該 id",
+            //     })
+            //   );
             }
-            res.end();
-          } catch {
-            res.writeHead(400, headers);
-            res.write(
-              JSON.stringify({
-                status: "error",
-                message: "請求處理失敗",
-                error: err.message,
-              })
-            );
-            console.error(err);
-            res.end();
+            // res.end();
+          } catch(err) {
+            handleError(res, err);
+            // res.writeHead(400, headers);
+            // res.write(
+            //   JSON.stringify({
+            //     status: "error",
+            //     message: "請求處理失敗",
+            //     error: err.message,
+            //   })
+            // );
+            // console.error(err);
+            // res.end();
           }
         });
     }else if(req.method == "OPTIONS"){
