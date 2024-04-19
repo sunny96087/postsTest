@@ -60,6 +60,16 @@ const requestListener = async(req, res)=>{
                       return;
                   }
 
+                  // 定義允許的欄位列表
+                  const allowedFields = ['name', 'content','image','likes'];
+
+                  // 檢查提供的數據是否只包含了允許的欄位
+                  const invalidFields = Object.keys(data).filter(key => !allowedFields.includes(key));
+                  if (invalidFields.length > 0) {
+                      handleError(res, `不允許的欄位: ${invalidFields.join(', ')}`);
+                      return;
+                  }
+
                     const newPost = await Post.create(
                         {
                             name: data.name,
@@ -115,7 +125,7 @@ const requestListener = async(req, res)=>{
             }
 
             // 假設你想要檢查 'name' 和 'content' 欄位
-            const fieldsToCheck = ['name', 'content'];
+            const fieldsToCheck = ['name', 'content','image','likes'];
 
             // 使用 checkFieldsNotEmpty 函數來檢查這些欄位
             const errorMessage = checkFieldsNotEmpty(data, fieldsToCheck);
